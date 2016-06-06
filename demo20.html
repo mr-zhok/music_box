@@ -1,0 +1,199 @@
+<!DOCTYPE html><html>
+  <head>
+    <meta charset="utf-8">
+    <title>八音盒</title>
+    <style type="text/css"></style>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript">
+    var musicBox = (function(){
+      var note = "33303330351230444043303221250333033303512304440433035542100001654101116542027653088756016541011165420276580880898754";
+      var notes = note.split("");
+      var music = [
+        "http://audio.xmcdn.com/group6/M09/94/0F/wKgDg1dSgj2jYmEeAABJtZe4StQ777.m4a",
+        "http://audio.xmcdn.com/group6/M09/94/0F/wKgDg1dSgj3D7aDpAABJtd4uyKg591.m4a",
+        "http://audio.xmcdn.com/group6/M07/90/06/wKgDhFdSgj2hRVsBAABJtSP8uGw833.m4a",
+        "http://audio.xmcdn.com/group6/M09/94/0F/wKgDg1dSgj2AzexnAABLLdnCe6I772.m4a",
+        "http://audio.xmcdn.com/group6/M07/90/06/wKgDhFdSgj7BbdNcAABLLQlYK4Q923.m4a",
+        "http://audio.xmcdn.com/group6/M07/90/07/wKgDhFdSgj7zVLJsAABLLco3BH4002.m4a",
+        "http://audio.xmcdn.com/group6/M09/94/10/wKgDg1dSgj6jRiLnAABLLcFinvM177.m4a",
+        "http://audio.xmcdn.com/group6/M07/90/06/wKgDhFdSgj6jpKglAABJtdOVhr8626.m4a"
+      ];
+      var player = function(i){
+        if(i == 0) return;
+        var audio = new Audio(music[i-1]);
+        audio.onended = function(){
+          delete audio;
+        }
+        audio.play();
+        
+      }
+      var Box = {
+        //读取/写入 简谱
+        note : function(str){
+          if(!str) return note;
+          note = str;
+          notes = str.split("");
+          return this;
+          
+        },
+        notes : function(arr){
+          if(!arr) return notes;
+          if(arr.length >= 0) notes = arr;
+          return this;
+        },
+        play : function(i){
+          player(i)
+        },
+        
+        //曲谱长度
+        size : function(){
+          return notes.length;
+        },
+        //音阶个数
+        length : music.length
+      }
+      return Box;
+    })();
+    $(function(){
+      //样式初始化
+      var boxObj = (function(musicBox){
+        musicBox.note("0" + musicBox.note())
+        var num = musicBox.size(), angle = [], g = 360 / num, z = Math.round(4.8/Math.sin(g*0.5*Math.PI/180)/Math.sin(90*Math.PI/180));
+        var mouseEvent = "mousedown mouseup mousemove";
+        $.fn.getTransform = function(){
+          var ts = this[0].style.transform;
+          var arr = ts.split(" ");
+          var obj = {}
+          $.each(arr, function(i,n) {    
+            a = n.match(/(\w+)\(([0-9.-]+)\w*\)/);
+            obj[a[1]] = Number(a[2]);
+          });
+          return obj;
+        }
+        $.fn.setTransform = function(obj){
+          if(!obj) return;
+          var str = "";
+          for(key in obj){
+            if(str) str += " ";
+            str += key + "(" + obj[key] + "deg)";
+          }
+          this.css({"transform":str});
+        }
+        var eventFn = [function(e){
+          $.downFlag = true;
+          $(e.currentTarget).css({"cursor":"move"});
+        },
+        function(e){
+          $.downFlag = false;
+          $.lastX = 0;
+          $.lastY = 0;
+          $(e.currentTarget).css({"cursor":"default"});
+        },
+        function(e, o){
+          if(!$.downFlag){
+            $.lastX = 0;
+            $.lastY = 0;
+            return;
+          }
+          
+          var obj = o.getTransform();
+          if(!$.lastX) $.lastX = e.pageX;
+          if(!$.lastY) $.lastY = e.pageY;
+          if(e.button == 0 && e.buttons == 3){
+            //鼠标左右键同时按下 控制 z 轴
+            e.preventDefault();
+            obj.rotateZ -= (e.pageX - $.lastX)/5;
+          } else {
+            //单独按下鼠标一个键 上下左右 控帛 x,y 轴
+            obj.rotateX -= (e.pageY - $.lastY)/5;
+            obj.rotateY += (e.pageX - $.lastX)/5;
+          }
+          
+          $.lastX = e.pageX;
+          $.lastY = e.pageY;
+          o.setTransform(obj);
+        }];
+        var me = mouseEvent.split(" ");
+        var typeEventFn = {};
+        $.each(me, function(i) {    
+          typeEventFn[me[i]] = eventFn[i];
+        });
+        var box = $("<ul>").css({"transform":"rotateX(40deg) rotateY(-15deg) rotateZ(45deg)"}).appendTo($('<div id="musicBox">').appendTo("body"));
+        box.parent().on(mouseEvent, function(){
+          var e = event || window.event;
+          e.stopPropagation();
+          typeEventFn[e.type](e, box);
+        }).on("contextmenu", function(){
+          return false;
+        });
+        var style  = "*{margin:0;padding:0;box-sizing:border-box;}\r\n";
+          style += "html,body,#musicBox{height:100%;overflow:hidden;}\r\n";
+          style += "body{background:black;color:white}\r\n";
+          style += "#musicBox{perspective:800px;}\r\n";
+          style += "#musicBox ul{width:400px;height:"+ z * 2 +"px;top:calc(50% - " + z + "px);transform-style:preserve-3d;transform-origin:center center -" + z + "px;list-style:none;margin:0 auto;position:relative;}\r\n";
+          style += "#musicBox ul li{text-align:center;line-height:5px;backface-visibility:visible;transform-style:preserve-3d;transform-origin:inherit;width:400px;height:10px;background-color:orange;border-left:solid 1px gray;border-right:solid 1px gray;position:absolute;top:50%;}\r\n";
+          style += "#musicBox ul li i{display:inline-block;margin:0 12px;width:5px;height:5px;background-color:black;border-radius:50%;}\r\n";
+          style += "#musicBox ul li.current{overflow:visible;background-color:#ff0;\r\n}";
+          style += "#musicBox ul li i.note{background-color:snow;\r\n}";
+          style += "#musicBox ul li.current i.note{background-color:red;}";
+        $("style").eq(0).text(style);
+        $.each(Array(num), function(i,n){
+          angle[i] = g * i;
+          var obj = $("<li>").css({"transform":"rotateX("+ angle[i] +"deg)"}).append(function(){
+            var noteArr = musicBox.notes();
+            var arr = Array(musicBox.length);
+            $.each(arr,function(j){
+              arr[j] = $("<i>");
+              if(j == noteArr[i]-1) arr[j].addClass("note")
+            });
+            return arr;
+          });
+          if(i == 0) obj.addClass("current");
+          obj.appendTo(box);
+        });
+        return box;
+      })(musicBox);
+      
+      //转动器 rotary 参数: rotateAxis "x,y,z"(String), sleep 每次间隔时间(Number)
+      $.fn.rotary = function(rotateAxis, sleep){
+        var ra = (rotateAxis ? rotateAxis : "x").toUpperCase();
+        var obj = this;
+        var g = 360 / $(obj).length;
+        var j = 0;
+        var flag = true;
+        var interval = 0;
+        clearTimeout(interval);
+        var rotary = function(){
+          if(j>= $(obj).length) j = 0;
+          flag = !flag;
+          if(flag){
+            $(obj).find(".note").removeAttr("style");
+            return;
+          }
+          $(obj).each(function(i){
+            if(i == j){
+              $(".current").removeAttr("class");
+              $(this).addClass("current");
+              var n = $(this).find(".note").css({"box-shadow":"0 0 1px 2px #ff0, 0 0 1px 3px red"}).index() + 1;
+              musicBox.play(n);
+            }
+            var angle = g * i - g * j;
+            var transform = this.style.transform;
+            var reg = new RegExp("(rotate" + ra + "\\()[0-9-.]+(deg\\))");
+            if(reg.test(transform)){
+              transform = transform.replace(reg, "$1" + angle + "$2");
+            }
+            $(this).css("transform", transform);
+          })
+          j++;
+        }
+        interval = setInterval(rotary, sleep/2)
+        return this;
+      }
+      //musicBox.note("10203") 设置简谱 1哆 2来 3咪...7嘻 8哆 0空 （C大调）
+      var s = boxObj.find("li").rotary("x", 300);
+    })
+    </script>
+  </head>
+  <body>3D 控制：单独按下鼠标一个键拖动 上下左右 控制 x,y 轴，鼠标左右键同时按下拖动 控制 z 轴</body>
+</html>
